@@ -53,17 +53,17 @@ void loop()
     M5.Lcd.setCursor(0,16);
     
     Serial.println();             //nueva línea
-    int segundo=recibo["Segundo"];  //extraigo el dato "Segundo" del objeto "recibido" y lo almaceno en la variable "segundo" 
+    String hora=recibo["Hora"]; 
     
-    Serial.println(segundo);      //envio por el puerto serie la variable segundo
-    M5.Lcd.println (segundo);
+    //Serial.println(segundo);      //envio por el puerto serie la variable segundo
+    M5.Lcd.println (hora);
     
     if (Serial.available() > 0) {
     char command = (char) Serial.read();
     switch (command) {
      case 'H':
-       Serial.println("Hola Mundo");
-       M5.Lcd.println("Hola Mundo");
+       Serial.println("OK!");
+       M5.Lcd.println("OK!");
        break;
      case 'D':
        Serial.println();
