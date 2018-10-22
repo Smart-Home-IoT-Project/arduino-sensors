@@ -1,41 +1,61 @@
-#include "WiFi.h"
+#include <WiFi.h>
 #include "AsyncUDP.h"
-#include <TimeLib.h>
+#include "time.h"
 #include <ArduinoJson.h>
 
-// Wifi info
+// *** WIFI CONFIG ***
 const char * ssid = "Equipo_4";
 const char * password = "scrumMaster1213";
 
-AsyncUDP udp;
-StaticJsonBuffer<200> jsonBuffer;                 //tamaño maximo de los datos
-JsonObject& envio = jsonBuffer.createObject();    //creación del objeto "envio"
+// *** TIME SERVER CONFIG ***
+struct tm timeinfo;
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = 3600;
+const int   daylightOffset_sec = 3600;
 
-// Pines sensor distancia
+// *** UDP ***
+AsyncUDP udp;
+
+
+// *** PIN CONFIG ***
+
+// Distancia
 const int EchoPin = 35; 
 const int TriggerPin = 23;
 
+
+void getLocalTime()
+{
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time");
+    return;
+  }
+}
+
 void setup()
 {
-    Serial.begin(115200);
+  // Serial speed
+  Serial.begin(115200);
 
-    // Establecemos hora
-    setTime (9, 15, 0, 7, 10, 2018); //hora minuto segundo dia mes año
+  // Pin mode
+  pinMode(TriggerPin, OUTPUT); 
+  pinMode(EchoPin, INPUT);
+  
+  //Connect to WiFi
+  Serial.printf("Connecting to %s ", ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+  }
+  Serial.println(" CONNECTED");
+  
+  //Init and get the time
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  getLocalTime();
 
-    // Sensor distancia
-    pinMode(TriggerPin, OUTPUT); 
-    pinMode(EchoPin, INPUT); 
-      
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, password);
-    if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-        Serial.println("WiFi Failed");
-        while(1) {
-            delay(1000);
-        }
-    }
-
-if(udp.listen(1234)) {
+  // Check udp
+  if(udp.listen(1234)) {
         Serial.print("UDP Listening on IP: ");
         Serial.println(WiFi.localIP());
         
@@ -46,28 +66,29 @@ if(udp.listen(1234)) {
 
         });
 
-    }
-}
+  }
 
+}
 
 void loop()
 {
-    delay(1000);
-    char texto[200];
+  // JSON Object
+  StaticJsonBuffer<200> jsonBuffer;
+  JsonObject& envio = jsonBuffer.createObject();
+  
+  delay(1000);
+  char texto[200];
 
-    // Get full time
-    String fullTime = String(hour())+" : "+String(+minute())+" : "+String(second());
+  getLocalTime();
+  String fullTime = asctime(&timeinfo);
+  //Serial.println(fullTime);
 
-    // Store data and time
-    envio["Distancia"] = distancia(TriggerPin, EchoPin);   
-    envio["Hora"]=fullTime;         
+  // Store data and time
+  envio["Distancia"] = distancia(TriggerPin, EchoPin);   
+  envio["Hora"]=fullTime;   
 
-      
-    envio.printTo(texto);         //paso del objeto "envio" a texto para transmitirlo
-
-    udp.broadcastTo(texto,1234);  //se emvía por el puerto 1234 el JSON 
-                                  //como texto
-    
+  envio.printTo(texto);
+  udp.broadcastTo(texto,1234);
 }
 
 // Calcular distancia
