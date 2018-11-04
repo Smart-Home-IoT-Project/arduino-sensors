@@ -15,6 +15,7 @@ void setup() {
   balanza.set_scale(); //La escala por defecto es 1
   balanza.tare(20);  //El peso actual es considerado Tara.
   Serial.println("Coloque un peso conocido:");
+  //paco
   
 }
 
