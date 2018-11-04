@@ -19,6 +19,7 @@ Serial.begin(9600);
   rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);   //bajo la frecuencia a 80MHz
   
   Serial.println("Listo para pesar");  
+  //paco
 }
 
 void loop() {
