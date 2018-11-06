@@ -2,6 +2,7 @@
 #include "AsyncUDP.h"
 #include "time.h"
 #include <ArduinoJson.h>
+#include "sensores.h"
 
 // *** WIFI CONFIG ***
 const char * ssid = "Equipo_4";
@@ -23,6 +24,13 @@ AsyncUDP udp;
 const int EchoPin = 35; 
 const int TriggerPin = 23;
 
+//Presencia
+const int LEDPin = 5;        // pin para el LED
+const int PIRPin = 16;         // pin de entrada (for PIR sensor)
+
+//Capacitativo
+const int pinCapacitivo = 25;  
+
 
 void getLocalTime()
 {
@@ -40,6 +48,7 @@ void setup()
   // Pin mode
   pinMode(TriggerPin, OUTPUT); 
   pinMode(EchoPin, INPUT);
+  configurarSensorPresencia (LEDPin, PIRPin);
   
   //Connect to WiFi
   Serial.printf("Connecting to %s ", ssid);
@@ -84,22 +93,11 @@ void loop()
   //Serial.println(fullTime);
 
   // Store data and time
-  envio["Distancia"] = distancia(TriggerPin, EchoPin);   
-  envio["Hora"]=fullTime;   
+  //envio["Distancia"] = distancia(TriggerPin, EchoPin);   
+  envio["Hora"]=fullTime;
+  envio["Presencia"]= leerSensorPresencia(LEDPin, PIRPin);
+  envio["Capacitativo"]= leerSensorCapacitativo(pinCapacitivo);
 
   envio.printTo(texto);
   udp.broadcastTo(texto,1234);
-}
-
-// Calcular distancia
-int distancia(int TriggerPin, int EchoPin) {
-  long duracion, distanciaCm;
-  digitalWrite(TriggerPin, LOW); //nos aseguramos señal baja al principio 
-  delayMicroseconds(4); 
-  digitalWrite(TriggerPin, HIGH); //generamos pulso de 10us 
-  delayMicroseconds(10); 
-  digitalWrite(TriggerPin, LOW); 
-  duracion = pulseIn(EchoPin, HIGH); //medimos el tiempo del pulso 
-  distanciaCm = duracion * 10 / 292 / 2; //convertimos a distancia 
-  return distanciaCm;
 }
