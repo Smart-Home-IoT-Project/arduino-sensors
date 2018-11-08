@@ -212,9 +212,9 @@ void sendData (){
   //Serial.println(fullTime);
 
   // Store data and time
-  envio["Hora"]=fullTime;
-  envio["Altura"]= weightValue;
-  envio["Peso"]= heightValue;
+  envio["hora"]=fullTime;
+  envio["altura"]= weightValue;
+  envio["peso"]= heightValue;
 
   envio.printTo(texto);
   udp.broadcastTo(texto,1234);
