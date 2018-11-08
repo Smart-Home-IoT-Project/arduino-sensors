@@ -1,12 +1,13 @@
 #include "HX711.h"
 #include "M5Stack.h"
 
-#define DOUT 4
-#define CLK  0
+#define DOUT 5
+#define CLK  2
 
 HX711 balanza(DOUT, CLK);
 
 void setup() {
+  M5.begin();
   Serial.begin(9600);
   Serial.print("Lectura del valor del ADC:  ");
   Serial.println(balanza.read());
@@ -14,9 +15,7 @@ void setup() {
   Serial.println("Destarando...");
   balanza.set_scale(); //La escala por defecto es 1
   balanza.tare(20);  //El peso actual es considerado Tara.
-  Serial.println("Coloque un peso conocido:");
-  //paco
-  
+  Serial.println("Coloque un peso conocido:");  
 }
 
 
