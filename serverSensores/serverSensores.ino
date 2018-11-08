@@ -52,25 +52,12 @@ void loop()
                     
     M5.Lcd.setCursor(0,16);
     
-    Serial.println();             //nueva línea
-    String hora=recibo["Hora"]; 
+    //Serial.println("DENTRO");             //nueva línea
+    String horaTexto=recibo["hora"]; 
     
     //Serial.println(segundo);      //envio por el puerto serie la variable segundo
-    M5.Lcd.println (hora);
+    M5.Lcd.println (horaTexto);
     
-    if (Serial.available() > 0) {
-    char command = (char) Serial.read();
-    switch (command) {
-     case 'H':
-       Serial.println("OK!");
-       M5.Lcd.println("OK!");
-       break;
-     case 'D':
-       Serial.println();
-       M5.Lcd.println("Medicion");
-       break;
-    }
-  }
-  
+ 
   }
 }
