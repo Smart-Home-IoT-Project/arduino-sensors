@@ -1,3 +1,7 @@
+ #include <WiFi.h>
+#include "AsyncUDP.h"
+#include "time.h"
+#include <ArduinoJson.h>
  // Include the correct display library
  // For a connection via I2C using Wire include
  #include <Wire.h>  // Only needed for Arduino 1.6.5 and earlier
@@ -22,12 +26,32 @@
 
 HX711 balanza(DOUT, CLK);
 
+// *** WIFI CONFIG ***
+const char * ssid = "Equipo_4";
+const char * password = "scrumMaster1213";
+
+// *** TIME SERVER CONFIG ***
+struct tm timeinfo;
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = 3600;
+const int   daylightOffset_sec = 3600;
+
+// *** UDP ***
+AsyncUDP udp;
+
 
 // Altura
 const int EchoPin = 15; 
 const int TriggerPin = 13;
 
 
+// other
+int counter = 0;
+double weightValue = 0.000;
+int heightValue = 0;
+double lastWeightValues[3];
+bool firstTime = true;
+int speakerPin = 25;
 
 
  
@@ -55,17 +79,39 @@ const int TriggerPin = 13;
  SSD1306Wire  display(0x3c, 5, 4);
  // SH1106 display(0x3c, D3, D5);
 
+void getLocalTime()
+{
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time");
+    return;
+  }
+}
 
 
 
 void setup() {
-    Serial.begin(9600);
-    rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);   //bajo la frecuencia a 80MHz
-    display.init();
+  Serial.begin(9600);
+  rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);   //bajo la frecuencia a 80MHz
 
-    // Altura
-    pinMode(TriggerPin, OUTPUT); 
-  pinMode(EchoPin, INPUT); 
+  //Connect to WiFi
+  Serial.printf("Connecting to %s ", ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+  }
+  Serial.println(" CONNECTED");
+
+  //Init and get the time
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  getLocalTime();
+  
+  display.init();
+  
+  // Altura
+  pinMode(TriggerPin, OUTPUT); 
+  pinMode(EchoPin, INPUT);
+  pinMode(speakerPin, OUTPUT); 
 
   // display.flipScreenVertically();
 
@@ -84,26 +130,60 @@ void setup() {
 
 }
 
-void loop() { 
-  Serial.print("Peso: ");
-  Serial.print(balanza.get_units(20),3);
-  Serial.println(" kg");
-    // Initialize the log buffer
-
-    // allocate memory to store 8 lines of text and 30 chars per line.
-display.setLogBuffer(5, 30);
-
-  display.print(balanza.get_units(20),3);
-  display.println(" kg");
-    display.print(distancia(TriggerPin, EchoPin));
-  display.println(" Altura");
-      // Draw it to the internal screen buffer
-    display.drawLogBuffer(0, 0);
-    // Display it on the screen
-    display.display();
+void loop() {
+  if(counter == 3){
+    counter = 0;
+  }
   
-  delay(1000);
-  display.clear();  
+  // Read values from sensors
+  weightValue = balanza.get_units(20),3; 
+  heightValue = distancia(TriggerPin, EchoPin);
+
+  lastWeightValues[counter] = weightValue;
+  
+  // (FOR DEBUGGING) Print to serial 
+  Serial.print("Peso: ");
+  Serial.print(weightValue);
+  Serial.println(" kg");
+  
+  
+  // Print to lcd
+  // Initialize the log buffer and allocate memory to store 8 lines of text and 30 chars per line.
+  display.setLogBuffer(5, 30);
+
+  display.print(weightValue);
+  display.println(" kg");
+  display.print(heightValue);
+  display.println(" Altura");
+  
+  // Draw it to the internal screen buffer
+  display.drawLogBuffer(0, 0);
+  
+  // Display it on the screen
+  display.display();
+  
+  //delay(1000);
+  display.clear();
+
+  if(fabs(weightValue) > 1.00){
+    if(fabs(lastWeightValues[0] - lastWeightValues[1]) < 0.50 && fabs(lastWeightValues[0] - lastWeightValues[2]) < 0.50 ){
+      if(firstTime){
+        sendData();
+        Serial.print("Enviado");
+        //Por hacer
+        // Feedback al usuario beep();
+        firstTime = false;
+      }else{
+        
+      }
+    }
+  }
+
+  if(fabs(weightValue) < 0.50){
+    firstTime = true;
+  }
+
+  counter++;
 }
 
 int distancia(int TriggerPin, int EchoPin) {
@@ -117,4 +197,25 @@ int distancia(int TriggerPin, int EchoPin) {
   duracion = duracion * 3; 
   distanciaCm = duracion * 10 / 292 / 2; //convertimos a distancia 
   return distanciaCm;
+} 
+
+void sendData (){
+  // JSON Object
+  StaticJsonBuffer<200> jsonBuffer;
+  JsonObject& envio = jsonBuffer.createObject();
+  
+  delay(1000);
+  char texto[200];
+
+  getLocalTime();
+  String fullTime = asctime(&timeinfo);
+  //Serial.println(fullTime);
+
+  // Store data and time
+  envio["Hora"]=fullTime;
+  envio["Altura"]= weightValue;
+  envio["Peso"]= heightValue;
+
+  envio.printTo(texto);
+  udp.broadcastTo(texto,1234);
 }
