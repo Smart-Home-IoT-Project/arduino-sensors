@@ -1,4 +1,4 @@
- #include <WiFi.h>
+#include <WiFi.h>
 #include "AsyncUDP.h"
 #include "time.h"
 #include <ArduinoJson.h>
@@ -213,8 +213,8 @@ void sendData (){
 
   // Store data and time
   envio["hora"]=fullTime;
-  envio["altura"]= weightValue;
-  envio["peso"]= heightValue;
+  envio["peso"]= weightValue;
+  envio["altura"]= heightValue;
 
   envio.printTo(texto);
   udp.broadcastTo(texto,1234);
