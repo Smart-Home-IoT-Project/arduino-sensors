@@ -1,25 +1,41 @@
+// Programa para la báscula basada en ESP32
+// Equipo 4 - GTI
+
 #include <WiFi.h>
 #include "AsyncUDP.h"
 #include "time.h"
 #include <ArduinoJson.h>
- // Include the correct display library
- // For a connection via I2C using Wire include
- #include <Wire.h>  // Only needed for Arduino 1.6.5 and earlier
+// Include the correct display library
+// For a connection via I2C using Wire include
+#include <Wire.h>  // Only needed for Arduino 1.6.5 and earlier
 #include "SSD1306Wire.h" // legacy include: `#include "SSD1306.h"`
- // or #include "SH1106Wire.h", legacy include: `#include "SH1106.h"`
- // For a connection via I2C using brzo_i2c (must be installed) include
- // #include <brzo_i2c.h> // Only needed for Arduino 1.6.5 and earlier
- // #include "SSD1306Brzo.h"
- // #include "SH1106Brzo.h"
- // For a connection via SPI include
- // #include <SPI.h> // Only needed for Arduino 1.6.5 and earlier
- // #include "SSD1306Spi.h"
- // #include "SH1106SPi.h"
+// or #include "SH1106Wire.h", legacy include: `#include "SH1106.h"`
+// For a connection via I2C using brzo_i2c (must be installed) include
+// #include <brzo_i2c.h> // Only needed for Arduino 1.6.5 and earlier
+// #include "SSD1306Brzo.h"
+// #include "SH1106Brzo.h"
+// For a connection via SPI include
+// #include <SPI.h> // Only needed for Arduino 1.6.5 and earlier
+// #include "SSD1306Spi.h"
+// #include "SH1106SPi.h"
 
-  // Scale
-  #include "HX711.h"
+// Scale
+#include "HX711.h"
 #include"soc/rtc.h";  //Libreriapara poder bajar la frecuencia
 
+// almacenar preferencias en Non Volatile RAM
+#include <Preferences.h>
+
+Preferences preferences;
+
+// BLE Server
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+
+// BLE UUIDs
+#define SERVICE_UUID        "7bbb4a6c-df98-402b-812a-d72c6cc91af3"
+#define CHARACTERISTIC_UUID "89111f27-25b3-4015-9a4f-b7b302dac000"
 
 #define DOUT  0
 #define CLK  2
@@ -27,8 +43,8 @@
 HX711 balanza(DOUT, CLK);
 
 // *** WIFI CONFIG ***
-const char * ssid = "Equipo_4";
-const char * password = "scrumMaster1213";
+const char * ssid = "";       // "Equipo_4"
+const char * password = "";   // "scrumMaster1213";
 
 // *** TIME SERVER CONFIG ***
 struct tm timeinfo;
@@ -91,6 +107,45 @@ void getLocalTime()
 
 void setup() {
   Serial.begin(9600);
+
+  // Open Preferences with my-app namespace. Each application module, library, etc
+  // has to use a namespace name to prevent key name collisions. We will open storage in
+  // RW-mode (second parameter has to be false).
+  // Note: Namespace name is limited to 15 chars.
+  preferences.begin("scale-app", false);
+
+  // Remove all preferences under the opened namespace
+  //preferences.clear();
+
+  // Or remove the counter key only
+  //preferences.remove("counter");
+
+  // Get the SSID and password value, if the key does not exist, return a default value
+  // Note: Key name is limited to 15 chars.
+  ssid = preferences.getString("ssid", "");
+  password = preferences.getString("password", "");
+  
+  if (ssid == "") {
+    /* code */
+    // aqui crear el servidor BLE, guardar datos, cerrar preferencias y reiniciar
+    BLEDevice::init("ESP32-Scale");
+    BLEServer *pServer = BLEDevice::createServer();
+    BLEService *pService = pServer->createService(SERVICE_UUID);
+    BLECharacteristic *pCharacteristic = pService->createCharacteristic(CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+    
+    pCharacteristic->setValue("Hola mundo");
+    pService->start();
+    BLEAdvertising *pAdvertising = pServer->getAdvertising();
+    pAdvertising->start();
+    Serial.println("Characteristic defined! Now you can read it in your phone!");
+    
+    //preferences.end();
+    // Restart ESP
+    //ESP.restart();
+  }
+
+  preferences.end();
+
   rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);   //bajo la frecuencia a 80MHz
 
   //Connect to WiFi
