@@ -36,15 +36,3 @@ int16_t leerSensorPresencia (int ledPin, int pirPin) {
       }
    }
 }
-
-// Sensor Capacitativo
-
-/*int16_t leerSensorCapacitativo (int pinCapacitativo) {
-  if (digitalRead(pinCapacitativo) == HIGH)   //si está activado
-    Serial.println("Sensor capacitativo activado");
-    return 1;
-  } else{
-    Serial.println("Sensor capacitativo parado");
-    return 0; 
-  }
-}*/

@@ -20,9 +20,6 @@ AsyncUDP udp;
 
 // *** PIN CONFIG ***
 
-// Distancia
-const int EchoPin = 35; 
-const int TriggerPin = 23;
 
 //Presencia
 const int LEDPin = 5;        // pin para el LED
@@ -46,8 +43,6 @@ void setup()
   Serial.begin(115200);
 
   // Pin mode
-  pinMode(TriggerPin, OUTPUT); 
-  pinMode(EchoPin, INPUT);
   configurarSensorPresencia (LEDPin, PIRPin);
   
   //Connect to WiFi
@@ -93,11 +88,10 @@ void loop()
   //Serial.println(fullTime);
 
   // Store data and time
-  //envio["Distancia"] = distancia(TriggerPin, EchoPin);   
   envio["Hora"]=fullTime;
   envio["Presencia"]= leerSensorPresencia(LEDPin, PIRPin);
-  envio["Capacitativo"]= leerSensorCapacitativo(pinCapacitivo);
+  //envio["Capacitativo"]= leerSensorCapacitativo(pinCapacitivo);
 
   envio.printTo(texto);
-  udp.broadcastTo(texto,1234);
+  //udp.broadcastTo(texto,1234);
 }
