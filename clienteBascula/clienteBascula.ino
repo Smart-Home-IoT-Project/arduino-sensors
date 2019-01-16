@@ -15,7 +15,7 @@ Preferences preferences;
 
 // BLE Server
 #include <BLEDevice.h>
-//#include <BLEUtils.h>
+#include <BLEUtils.h>
 #include <BLEServer.h>
 
 // BLE UUIDs
@@ -50,19 +50,84 @@ double weightValue = 0.000;
 int heightValue = 0;
 double lastWeightValues[3];
 bool firstTime = true;
+bool bufferIsEmpty = true;
+char JSONMessage[200];
+String jsonString;
 int speakerPin = 25;
 
 // Initialize the OLED display using Wire library
 SSD1306Wire display(0x3c, 5, 4);
 
-void getLocalTime(){
-  if (!getLocalTime(&timeinfo)){
+void getLocalTime() {
+  if (!getLocalTime(&timeinfo)) {
     Serial.println("Failed to obtain time");
     return;
   }
 }
 
-void setup(){
+class MyCallbacks : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic *pCharacteristic) {
+    std::string value = pCharacteristic->getValue();
+
+    if (value.length() > 0) {
+
+      if (bufferIsEmpty) {
+        jsonString = value.c_str();
+        bufferIsEmpty = false;
+        //Serial.println("*********");
+        //Serial.print("Recibido: ");
+        //Serial.println(jsonString);
+        //Serial.println("*********");
+      } else {
+        //strcat(JSONMessage, value.c_str());
+        jsonString = jsonString + value.c_str();
+        bufferIsEmpty = true;
+        for (int i = 0; i < jsonString.length(); i++) {
+          JSONMessage[i] = jsonString[i];
+        }
+        //Serial.println("*********");
+        //Serial.print("Recibido: ");
+        //Serial.println(jsonString);
+        //Serial.print("JSON: ");
+        //Serial.println(JSONMessage);
+        //Serial.println("*********");
+        StaticJsonBuffer<200> jsonBuffer;
+        JsonObject &jsonObjeto = jsonBuffer.parseObject(JSONMessage);
+        // Test if parsing succeeds.
+        if (!jsonObjeto.success()) {
+          Serial.println("parseObject() failed");
+          return;
+        } else {
+          const char *ssid = jsonObjeto["s"];
+          const char *password = jsonObjeto["p"];
+          Serial.println("*********");
+          Serial.println("Recibido:");
+          Serial.print("SSID: ");
+          Serial.println(ssid);
+          Serial.print("Password: ");
+          Serial.println(password);
+          Serial.println("*********");
+
+          // Guardar y reiniciar
+          Serial.println("Guardando preferencias");          
+          preferences.begin("scale-app", false);
+          preferences.putString("ssid", ssid);
+          preferences.putString("password", password);
+          preferences.end();
+          Serial.println("Reiniciando...");
+          display.clear();
+          display.setTextAlignment(TEXT_ALIGN_LEFT);
+          display.drawStringMaxWidth(0, 0, 128, "Reiniciando..." );
+          display.display();
+          delay(1000);
+          ESP.restart();
+        }
+      }
+    }
+  }
+};
+
+void setup() {
   Serial.begin(115200);
 
   // Open Preferences with my-app namespace. Each application module, library, etc
@@ -82,36 +147,42 @@ void setup(){
   wifiSsid = preferences.getString("ssid", "");
   wifiPassword = preferences.getString("password", "");
 
-  if (wifiSsid == ""){
+  if (wifiSsid == "") {
     // aqui crear el servidor BLE, guardar datos, cerrar preferencias y reiniciar
-    BLEDevice::init("ESP32-Scale");
+    BLEDevice::init("Bascula Equipo4");
     BLEServer *pServer = BLEDevice::createServer();
     BLEService *pService = pServer->createService(SERVICE_UUID);
     BLECharacteristic *pCharacteristic = pService->createCharacteristic(CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-
-    pCharacteristic->setValue("Hola mundo");
+    pCharacteristic->setCallbacks(new MyCallbacks());
+    pCharacteristic->setValue("ESP32 Bascula Equipo 4        ");
     pService->start();
-    BLEAdvertising *pAdvertising = pServer->getAdvertising();
-    pAdvertising->start();
+    BLEAdvertising *pAdvertising = pServer->getAdvertising(); // this still is working for backward compatibility
+    pAdvertising->start();                                    // this still is working for backward compatibility
+    //  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+    //  pAdvertising->addServiceUUID(SERVICE_UUID);
+    //  pAdvertising->setScanResponse(true);
+    //  pAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
+    //  pAdvertising->setMinPreferred(0x12);
+    //  BLEDevice::startAdvertising();
     Serial.println("Characteristic defined! Now you can read it in your phone!");
 
-    //preferences.end();
+    // preferences.end();
     // Restart ESP
-    //ESP.restart();
+    // ESP.restart();
+  } else {
+    //Connect to WiFi
+    Serial.printf("Connecting to %s ", wifiSsid);
+    WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+    }
+    Serial.println(" CONNECTED");
   }
 
   preferences.end();
 
   rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M); //bajo la frecuencia a 80MHz
-
-  //Connect to WiFi
-  Serial.printf("Connecting to %s ", wifiSsid);
-  WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
-  while (WiFi.status() != WL_CONNECTED){
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println(" CONNECTED");
 
   //Init and get the time
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
@@ -139,8 +210,8 @@ void setup(){
   Serial.println("Listo para pesar");
 }
 
-void loop(){
-  if (counter == 3){
+void loop() {
+  if (counter == 3) {
     counter = 0;
   }
 
@@ -173,27 +244,27 @@ void loop(){
   //delay(1000);
   display.clear();
 
-  if (fabs(weightValue) > 1.00){
-    if (fabs(lastWeightValues[0] - lastWeightValues[1]) < 0.50 && fabs(lastWeightValues[0] - lastWeightValues[2]) < 0.50){
-      if (firstTime){
+  if (fabs(weightValue) > 1.00) {
+    if (fabs(lastWeightValues[0] - lastWeightValues[1]) < 0.50 && fabs(lastWeightValues[0] - lastWeightValues[2]) < 0.50) {
+      if (firstTime) {
         sendData();
         Serial.print("Enviado");
         //Por hacer
         // Feedback al usuario beep();
         firstTime = false;
-      }
-      else{
+      } else {
+
       }
     }
   }
 
-  if (fabs(weightValue) < 0.50){
+  if (fabs(weightValue) < 0.50) {
     firstTime = true;
   }
   counter++;
 }
 
-int distancia(int TriggerPin, int EchoPin){
+int distancia(int TriggerPin, int EchoPin) {
   long duracion, distanciaCm;
   digitalWrite(TriggerPin, LOW); //nos aseguramos señal baja al principio
   delayMicroseconds(4);
@@ -206,9 +277,7 @@ int distancia(int TriggerPin, int EchoPin){
   return distanciaCm;
 }
 
-
-void sendData()
-{
+void sendData() {
   // JSON Object
   StaticJsonBuffer<200> jsonBuffer;
   JsonObject &envio = jsonBuffer.createObject();
