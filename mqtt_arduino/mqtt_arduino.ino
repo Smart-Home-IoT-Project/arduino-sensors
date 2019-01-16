@@ -110,7 +110,7 @@ void loop() {
       if (pirState == LOW)  //si previamente estaba apagado
       {
         Serial.println("Sensor activado");
-        client.publish("equipo4/practica/medida/actividad", String(true));
+        client.publish("equipo4/practica/medida/actividad", String("true"));
         pirState = HIGH;
       }
    } 
@@ -120,6 +120,7 @@ void loop() {
       if (pirState == HIGH)  //si previamente estaba encendido
       {
         Serial.println("Sensor parado");
+        client.publish("equipo4/practica/medida/actividad", String("false"));
         pirState = LOW;
       }
    }
