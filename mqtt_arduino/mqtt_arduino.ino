@@ -1,7 +1,10 @@
 #include <WiFi.h> 
 #include <MQTT.h> 
 #include <M5Stack.h>
+<<<<<<< HEAD
 #include "sensores.h"
+=======
+>>>>>>> b4810fb327f756d6fb7b30369b16231cba2f1086
 #include "dht.h"
 
 // PIN CONFIG
@@ -14,10 +17,17 @@ const int luzPin = 33;
 
 // Presencia
 const int presenciaPin = 26;
+<<<<<<< HEAD
 
 //Presencia
 const int LEDPin = 5;        // pin para el LED
 const int PIRPin = 16;         // pin de entrada (for PIR sensor)
+=======
+int pirState = LOW;           // de inicio no hay movimiento
+const int LEDPin = 13;        // pin para el LED
+const int PIRPin = 2;         // pin de entrada (for PIR sensor)
+int val = 0;
+>>>>>>> b4810fb327f756d6fb7b30369b16231cba2f1086
 
 // WIFI
 const char ssid[] = "Equipo_4"; 
@@ -68,10 +78,17 @@ void messageReceived(String &topic, String &payload) {
 void setup() { 
   Serial.begin(115200); 
   // Pin mode
+<<<<<<< HEAD
   configurarSensorPresencia (LEDPin, PIRPin);
     pinMode(luzPin, INPUT);  
     pinMode(presenciaPin, INPUT);
 
+=======
+  //configurarSensorPresencia (LEDPin, PIRPin);
+    pinMode(luzPin, INPUT);  
+    pinMode(presenciaPin, INPUT);
+pinMode(LEDPin, OUTPUT);
+>>>>>>> b4810fb327f756d6fb7b30369b16231cba2f1086
   // Conf wifi
   WiFi.begin(ssid, pass);
   //Conf MQTT 
@@ -81,11 +98,16 @@ void setup() {
 } 
 
 void loop() { 
+<<<<<<< HEAD
+=======
+  
+>>>>>>> b4810fb327f756d6fb7b30369b16231cba2f1086
   client.loop(); 
   delay(10); // <- Esperamos a que WiFi sea estable 
   if (!client.connected()) { 
     connect(); 
   }
+<<<<<<< HEAD
   /*
   int puerta[1];
   if (!digitalRead(presenciaPin)){
@@ -128,6 +150,8 @@ void loop() {
     delay(3000);
   }*/
 
+=======
+>>>>>>> b4810fb327f756d6fb7b30369b16231cba2f1086
 
   DHT.read11(dht_apin);
   Serial.print("Current humidity = ");
@@ -143,6 +167,7 @@ void loop() {
 
   Serial.print("Current light = ");
   Serial.print(analogRead(luzPin));
+<<<<<<< HEAD
 
 
     /* read obstacle status and store it into "detect"
@@ -157,4 +182,32 @@ void loop() {
 
     */
     delay(5000);
+=======
+  
+
+   val = digitalRead(presenciaPin);
+   if (val == HIGH)   //si está activado
+   { 
+      digitalWrite(LEDPin, HIGH);  //LED ON
+      if (pirState == LOW)  //si previamente estaba apagado
+      {
+        Serial.println("Sensor activado");
+        client.publish("equipo4/practica/medida/actividad", String("true"));
+        pirState = HIGH;
+      }
+   } 
+   else   //si esta desactivado
+   {
+      digitalWrite(LEDPin, LOW); // LED OFF
+      if (pirState == HIGH)  //si previamente estaba encendido
+      {
+        Serial.println("Sensor parado");
+        client.publish("equipo4/practica/medida/actividad", String("false"));
+        pirState = LOW;
+      }
+   }
+
+
+  delay(5000);
+>>>>>>> b4810fb327f756d6fb7b30369b16231cba2f1086
 } 
